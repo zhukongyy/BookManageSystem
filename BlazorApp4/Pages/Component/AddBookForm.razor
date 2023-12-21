@@ -1,0 +1,45 @@
+﻿@using AntDesign.TableModels
+@using System.ComponentModel.DataAnnotations
+@using System.Net.Http.Headers
+@using System.Text.Json.Serialization
+@inject HttpClient Http
+@inject INotificationService _notice
+@namespace BlazorApp4.Pages
+<Form @ref="form"
+      Model="@book"
+      OnFinish="HandleSubmit"
+      LabelColSpan="8"
+      WrapperColSpan="32"
+      Style=" justify-content: right; align-items: center">
+    <FormItem Style="width:400px" Label="ISBN">
+        <Input @bind-Value="@context.Isbn" />
+    </FormItem>
+    <FormItem Style="width:400px" Label="标题">
+        <Input @bind-Value="@context.Title" />
+    </FormItem>
+    <FormItem Style="width:400px" Label="作者">
+        <Input @bind-Value="@context.Author" />
+    </FormItem>
+    <FormItem Style="width:400px" Label="数量">
+        <Input @bind-Value="@context.Quantity" />
+    </FormItem>
+    <FormItem Style="width:400px" Label="出版商">
+        <Input @bind-Value="@context.Publisher" />
+    </FormItem>
+    <FormItem Style="width:400px" Label="种类">
+        <Input @bind-Value="@context.Category" />
+    </FormItem>
+</Form>
+
+@code
+{
+
+    private Book book = new();
+    private Form<Book>? form;
+
+    public async Task<bool> HandleSubmit()
+    {
+        var c = await Http.PostAsJsonAsync<Book>("/book_add", book);
+        return c.IsSuccessStatusCode;
+    }
+}

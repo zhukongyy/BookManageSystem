@@ -1,0 +1,155 @@
+﻿@page "/usermanage"
+@using System.Text.Json.Serialization
+@inject HttpClient Http
+@inject INotificationService _notice
+@using AntDesign
+<div class="action-group">
+    <Button Type="primary" OnClick="Load">加载</Button>
+    <Button Type="primary" OnClick="@ShowModal">
+        添加用户
+    </Button>
+    <Input Placeholder="ISBN Filter" AllowClear="true" OnChange="OnChange" TValue="string" @bind-Value="@nameFilter" />
+    <Input Placeholder="Author Filter" AllowClear="true" OnChange="OnChange" TValue="string" @bind-Value="@cardFilter" />
+
+</div>
+
+<Modal Title="@("添加用户")"
+       @bind-Visible="@_visible"
+       OnOk="@HandleOk"
+       OnCancel="@HandleCancel">
+    <AddUserForm @ref="form" />
+</Modal>
+<Table DataSource="showedUser" TItem="User" Bordered TableLayout="fixed">
+     <ChildContent Context="user">
+         <Column TData="string" Title="Name">
+
+             @user.Name
+
+        </Column>
+        <Column TData="string" Title="Card">
+
+            @user.Card
+
+        </Column>
+        <Column TData="string" Title="Specialty">
+            @user.Specialty
+        </Column>
+        <Column TData="string" Title="Education">
+            @user.Education
+        </Column>
+
+
+        <ActionColumn Title="Action">
+            <Button Type="primary" OnClick="()=>DeleteUser(user.Card)"  Color="Color.Red10">
+                删除
+            </Button>
+        </ActionColumn>
+    </ChildContent>
+</Table>
+
+<style>
+    .save {
+        margin-right: 8px;
+    }
+
+    .action-group {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .edit {
+        margin-right: 16px;
+    }
+</style>
+
+
+@code {
+    User[] users;
+
+    bool _visible = false;
+
+    private AddUserForm form;
+
+    private void ShowModal()
+    {
+        _visible = true;
+    }
+
+    private async Task HandleOk(MouseEventArgs e)
+    {
+        bool c = await form.HandleSubmit();
+        Task task;
+        if (c == true)
+        {
+
+            task = NoticeModel.ShowNotification("添加成功", "添加用户成功", _notice, NotificationType.Success);
+        }
+        else
+        {
+            task = NoticeModel.ShowNotification("添加失败", "添加用户失败", _notice, NotificationType.Error);
+        }
+        await Load();
+        StateHasChanged();
+        _visible = false;
+        await task;
+    }
+    private void HandleCancel(MouseEventArgs e)
+    {
+        Console.WriteLine(e);
+    }
+
+
+    private List<User>? showedUser;
+    private List<User>? allUser;
+    private async Task Load()
+    {
+        allUser = new List<User>(await Http.GetFromJsonAsync<User[]>("/person_query_All"));
+        OnChange();
+    }
+
+
+
+    async void DeleteUser(string card)
+    {
+        var c = await Http.GetAsync($"/person_delete?card={card}");
+        Task task;
+        if (c.IsSuccessStatusCode)
+        {
+
+            task=NoticeModel.ShowNotification("删除成功", "删除成功", _notice, NotificationType.Success);
+        }
+        else
+        {
+            task = NoticeModel.ShowNotification("删除失败", "删除失败", _notice, NotificationType.Error);
+        }
+        Load();
+        StateHasChanged();
+        await task;
+    }
+
+    private string nameFilter = "";
+    private string cardFilter = "";
+    void OnChange()
+    {
+        if (allUser == null || allUser.Count == 0)
+        {
+            return;
+        }
+        IEnumerable<User> c = allUser;
+        if (nameFilter != "")
+        {
+            c = c.Where(user => user.Name.Contains(nameFilter));
+        }
+        if (cardFilter != "")
+        {
+            c = c.Where(user => user.Card.Contains(cardFilter));
+        }
+        showedUser = c.ToList<User>();
+    }
+    protected override async Task OnInitializedAsync()
+    {
+        await Load();
+    }
+}

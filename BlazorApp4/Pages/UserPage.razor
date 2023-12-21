@@ -1,0 +1,128 @@
+﻿@page "/user"
+@using System.Text.Json.Serialization
+@inject HttpClient Http
+@inject INotificationService _notice
+@inject GlobalState globalState
+
+@using AntDesign
+<div class="action-group">
+    <Button Type="primary" OnClick="Load">加载</Button>
+    <Input Placeholder="Tittle Filter" AllowClear="true" OnChange="OnChange" TValue="string" @bind-Value="@titleFilter" />
+    <Input Placeholder="Author Filter" AllowClear="true" OnChange="OnChange" TValue="string" @bind-Value="@authorFilter" />
+    <Input Placeholder="Isbn Filter" AllowClear="true" OnChange="OnChange" TValue="string" @bind-Value="@isbnFilter" />
+</div>
+
+<Table DataSource="showedBooks" TItem="Book" Bordered TableLayout="fixed">
+     <ChildContent Context="book">
+         <Column TData="string" Title="ISBN">
+
+             @book.Isbn
+
+        </Column>
+        <Column TData="string" Title="Title">
+
+            @book.Title
+
+        </Column>
+        <Column TData="string" Title="Author">
+            @book.Author
+        </Column>
+        <Column TData="string" Title="Category">
+            @book.Category
+        </Column>
+        <Column TData="string" Title="Quantity">
+            @book.Quantity
+        </Column>
+
+        <ActionColumn Title="Action">
+            <Button Type="primary" OnClick="()=>HanddlReserve(book.Isbn)" Color="Color.Green1">
+                预约
+            </Button>
+        </ActionColumn>
+    </ChildContent>
+</Table>
+
+<style>
+    .save {
+        margin-right: 8px;
+    }
+
+    .action-group {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .edit {
+        margin-right: 16px;
+    }
+</style>
+
+
+@code {
+
+
+
+    private AddUserForm form;
+
+
+    private async Task HanddlReserve(string isbn)
+    {
+        var c = await Http.PostAsJsonAsync("/reserve", new { isbn = isbn, card = globalState.UserName });
+        Task task;
+        if (c.IsSuccessStatusCode == true)
+        {
+
+            task = NoticeModel.ShowNotification("预约成功", "预约成功", _notice, NotificationType.Success);
+        }
+        else
+        {
+            task = NoticeModel.ShowNotification("预约失败", "预约失败", _notice, NotificationType.Error);
+        }
+        await Load();
+        StateHasChanged();
+        await task;
+    }
+
+
+    private List<Book>? showedBooks;
+    private List<Book>? allBooks;
+    private async Task Load()
+    {
+        allBooks = new List<Book>(await Http.GetFromJsonAsync<Book[]>("/book_query_All"));
+        OnChange();
+    }
+
+
+
+    private string titleFilter = "";
+    private string authorFilter = "";
+    private string isbnFilter = "";
+    void OnChange()
+    {
+        if (allBooks == null || allBooks.Count == 0)
+        {
+            return;
+        }
+        IEnumerable<Book> c = allBooks;
+        if (titleFilter != "")
+        {
+            c = c.Where(book => book.Title.Contains(titleFilter));
+        }
+        if (authorFilter != "")
+        {
+            c = c.Where(book => book.Author.Contains(authorFilter));
+        }
+        if (isbnFilter != "")
+        {
+            c = c.Where(book => book.Isbn.Contains(isbnFilter));
+        }
+        showedBooks = c.ToList<Book>();
+    }
+    protected override async Task OnInitializedAsync()
+    {
+        await Load();
+    }
+
+}

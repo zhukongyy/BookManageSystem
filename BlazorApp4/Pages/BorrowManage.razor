@@ -1,0 +1,147 @@
+﻿@page "/QueryBorrow"
+@using System.Text.Json.Serialization
+@using AntDesign
+
+<div class ="action-group">
+    <Button Type="primary" OnClick="@ShowModal">
+        添加借阅
+    </Button>
+    <Search Placeholder="input cardNum" AllowClear EnterButton="@("Search")" Size="large" OnSearch="OnSearch" />
+ </div>
+
+ <Modal Title="@("添加借阅")"
+        @bind-Visible="@_visible"
+        OnOk="@HandleOk"
+        OnCancel="@HandleCancel">
+     <AddLendForm @ref="form" />
+ </Modal>
+
+ <Table DataSource="lends" TItem="Lend" Bordered TableLayout="fixed">
+     <ChildContent Context="lend">
+         <Column TData="string" Title="ISBN">
+
+             @lend.book.Isbn
+
+        </Column>
+        <Column TData="string" Title="Title">
+
+            @lend.book.Title
+
+        </Column>
+        <Column TData="string" Title="Title">
+            @lend.user.Name
+        </Column>
+        <Column TData="string" Title="Card">
+            @lend.user.Card
+        </Column>
+
+        <Column TData="DateTime" Title="LendDate">
+            @lend.lend_date
+        </Column>
+        <ActionColumn Title="Action">
+            <Button Type="primary" OnClick="()=>ReturnBook(lend)">
+                还书
+            </Button>
+        </ActionColumn>
+    </ChildContent>
+</Table>
+
+<style>
+    .action-group {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+    }
+</style>
+
+@inject HttpClient Http
+@inject INotificationService _notice
+@inject ModalService _modalService
+@code {
+
+    string card = "";
+    bool _visible = false;
+    bool _visible_Fine = false;
+    private AddLendForm form;
+    Lend[] lends;
+    private void ShowModal()
+    {
+        _visible = true;
+    }
+    private async Task HandleOk(MouseEventArgs e)
+    {
+        bool c = await form.HandleSubmit();
+        Task task;
+        if (c == true)
+        {
+
+            task = NoticeModel.ShowNotification("借阅成功", "借阅图书成功", _notice, NotificationType.Success);
+        }
+        else
+        {
+            task = NoticeModel.ShowNotification("借阅失败", "借阅图书失败", _notice, NotificationType.Error);
+        }
+        await OnSearch();
+        StateHasChanged();
+        _visible = false;
+        await task;
+    }
+    private void HandleCancel(MouseEventArgs e)
+    {
+        Console.WriteLine(e);
+    }
+    private async Task OnSearch()
+    {
+        if (card == "")
+        {
+            lends = await Http.GetFromJsonAsync<Lend[]>($"/lend_query_all");
+        }
+        else
+        {
+            lends = await Http.GetFromJsonAsync<Lend[]>($"/person_query_lend?card={card}");
+        }
+    }
+    private void HandleFine(double fine)
+    {
+        if (fine.Equals(0.0))
+        {
+            return;
+        }
+        _modalService.Warning(new ConfirmOptions()
+            {
+                Title = "违规缴费",
+                Content = $"须缴费{fine:0.00}元"
+    });
+    }
+    private class Fine
+    {
+        public int fine{ get; set; }
+    }
+    private async Task ReturnBook(Lend lend)
+    {
+        var c = await Http.PostAsJsonAsync("/return", new { isbn = lend.book.Isbn, card = lend.user.Card });
+        Task task;
+        if (c.IsSuccessStatusCode)
+        {
+            var b = c.Content;
+            var fine = (await c.Content.ReadFromJsonAsync<Fine[]>());
+
+            HandleFine(fine[0].fine);
+            task = NoticeModel.ShowNotification("还书成功", "还书成功", _notice, NotificationType.Success);
+            await OnSearch();
+        }
+        else
+        {
+            task = NoticeModel.ShowNotification("还书失败", "还书失败", _notice, NotificationType.Error);
+        }
+        await OnSearch();
+        StateHasChanged();
+        await task;
+    }
+    protected override async Task OnInitializedAsync()
+    {
+        await OnSearch();
+    }
+
+}

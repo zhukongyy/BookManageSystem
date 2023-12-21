@@ -1,0 +1,51 @@
+﻿@using AntDesign.TableModels
+@using System.ComponentModel.DataAnnotations
+@using System.Net.Http.Headers
+@using System.Text.Json;
+@using System.Text.Json.Serialization
+@inject HttpClient Http
+@namespace BlazorApp4.Pages
+<Form @ref="form"
+      Model="@user"
+      OnFinish="HandleSubmit"
+      LabelColSpan="8"
+      WrapperColSpan="32"
+      Style=" justify-content: right; align-items: center">
+    <FormItem Style="width:400px" Label="Name">
+        <Input @bind-Value="@context.Name" />
+    </FormItem>
+    <FormItem Style="width:400px" Label="Card">
+        <Input @bind-Value="@context.Card" />
+    </FormItem>
+    <FormItem Style="width:400px" Label="Specialty">
+        <Input @bind-Value="@context.Specialty" />
+    </FormItem>
+    <FormItem Style="width:400px" Label="Education">
+        <select @bind="@context.Education">
+            @foreach (var education in educations)
+            {
+                <option value="@education">@education</option>
+            }
+        </select>
+    </FormItem>
+</Form>
+
+@code
+{
+    List<string> educations = new()
+    {
+        "本科",
+        "专科",
+        "硕士",
+        "博士",
+        "老师"
+    };
+    private User user = new();
+    private Form<User>? form;
+
+    public async Task<bool> HandleSubmit()
+    {
+        var c = await Http.PostAsJsonAsync<User>("/person_add", user);
+        return c.IsSuccessStatusCode;
+    }
+}

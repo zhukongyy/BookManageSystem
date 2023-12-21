@@ -1,0 +1,65 @@
+﻿
+@layout MainLayout
+@inject HttpClient Http
+@using System.ComponentModel
+@using System.Reflection
+@using System.Web
+@inject INotificationService _notice
+
+<h1>图书管理</h1>
+
+<Button OnClick="Load"></Button>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Isbn</th>
+                <th>Title</th>
+                <th>Author</th>
+                <th>Book_Add_Date</th>
+                <th>Quantity</th>
+            </tr>
+        </thead>
+        <tbody>
+        @if (books == null)
+        {
+            <p><em>Loading...</em></p>
+        }
+        else   
+            @foreach (var book in books)
+            {
+                <tr>
+                    <td>@book.Isbn</td>
+                    <td>@book.title</td>
+                    <td>@book.Author</td>
+                    <td>@book.Book_Add_Date</td>
+                    <td>@book.Quantity</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+@using AntDesign.TableModels;
+@using System.Text.Json;
+@using System.Text.Json.Serialization
+
+@code {
+    private Book[]? books;
+    private async Task Load()
+    {
+        books = await Http.GetFromJsonAsync<Book[]>("/bookqueryAll");
+    }
+    private class Book
+    {
+        [JsonPropertyName("isbn")]
+        public string? Isbn { get; set; }
+        [JsonPropertyName("name")]
+        public string? title { get; set; }
+        [JsonPropertyName("Author")]
+        public string? Author { get; set; }
+        [JsonPropertyName("Quantity")]
+        public int Quantity { get; set; }
+        [JsonPropertyName("date")]
+        public DateTime Book_Add_Date { get; set; }
+    }
+
+
+}

@@ -1,0 +1,39 @@
+﻿@inherits LayoutComponentBase
+@inject NavigationManager navigationManager
+@inject GlobalState globalState
+
+@using static BlazorApp4.App
+<div class="page">
+    <div class="sidebar">
+        <NavMenu />
+    </div>
+
+    <main>
+        <div class="top-row px-4">
+            <a @onclick="() => Logout()">Logout</a>
+        </div>
+
+        <article class="content px-4">
+            @Body
+        </article>
+    </main>
+</div>
+@code{
+    void Logout(){
+        globalState.Role = -1;
+        globalState.UserName = "";
+        navigationManager.NavigateTo("/login", false);
+    }
+    void Check(){
+        if (globalState.Role == -1)
+        {
+            globalState.UserName = "";
+            navigationManager.NavigateTo("/login", false);
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Check();
+    }
+}

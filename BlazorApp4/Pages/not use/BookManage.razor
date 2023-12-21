@@ -1,0 +1,221 @@
+﻿
+@using System.Text.Json.Serialization
+@inject HttpClient Http
+@inject INotificationService _notice
+@using AntDesign
+<Button Type="primary" OnClick="Load">加载全部</Button>
+<Button Type="primary" OnClick="@ShowModal">
+    添加图书
+</Button>
+<Modal Title="@("添加图书")"
+       @bind-Visible="@_visible"
+       OnOk="@HandleOk"
+       OnCancel="@HandleCancel">
+    <AddBookForm @ref="form" />
+</Modal>
+<Table DataSource="books" TItem="Book" RowClassName="@(_=>"editable-row")" Bordered TableLayout="fixed">
+     <ChildContent Context="book">
+         <Column TData="string" Title="ISBN">
+
+             @book.Isbn
+
+        </Column>
+        <Column TData="string" Title="Book_Add_Date">
+
+            @book.Book_Add_Date.ToString("yyyy-MM-dd")
+
+        </Column>
+        <Column TData="string" Title="Title">
+            @if (!editCache[book.Isbn].edit)
+            {
+                @book.title
+            }
+            else
+            {
+                <Input @bind-Value="editCache[book.Isbn].bookcache.title" />
+            }
+        </Column>
+        <Column TData="string" Title="Author">
+            @if (!editCache[book.Isbn].edit)
+            {
+                @book.Author
+            }
+            else
+            {
+                <Input @bind-Value="editCache[book.Isbn].bookcache.Author" />
+            }
+        </Column>
+        <Column TData="int" Title="Quantity">
+            @if (!editCache[book.Isbn].edit)
+            {
+                @book.Quantity
+            }
+            else
+            {
+                <Input @bind-Value="editCache[book.Isbn].bookcache.Quantity" />
+            }
+        </Column>
+        <Column TData="string" Title="Publisher">
+            @if (!editCache[book.Isbn].edit)
+            {
+                @book.Quantity
+            }
+            else
+            {
+                <Input @bind-Value="editCache[book.Isbn].bookcache.Publisher" />
+            }
+        </Column>
+        <ActionColumn Title="Action">
+            @if (!editCache[book.Isbn].edit)
+            {
+                <a class="edit" @onclick="() => startEdit(book.Isbn)">Edit</a>
+                <Popconfirm Title="Sure to delete?"
+                            OnConfirm="() => DeleteBook(book.Isbn)"
+                            OkText="Yes"
+                            CancelText="No">
+                    <a class="delete">Delete</a>
+                </Popconfirm>
+            }
+            else
+            {
+                <Popconfirm Title="Sure to commit?"
+                            OnConfirm="() => CommitEdit(book.Isbn)"
+                            OkText="Yes"
+                            CancelText="No">
+                    <a class="save">Commit</a>
+                </Popconfirm>
+                <a @onclick="() => cancelEdit(book.Isbn)">Cancel</a>
+
+            }
+        </ActionColumn>
+    </ChildContent>
+</Table>
+
+<style>
+    .save {
+        margin-right: 8px;
+    }
+</style>
+<style>
+    .edit {
+        margin-right: 16px;
+    }
+</style>
+
+@code {
+
+
+    private class Book
+    {
+        [JsonPropertyName("isbn")]
+        public string Isbn { get; set; }
+        [JsonPropertyName("name")]
+        public string? title { get; set; }
+        [JsonPropertyName("author")]
+        public string? Author { get; set; }
+        [JsonPropertyName("quantity")]
+        public int Quantity { get; set; }
+        [JsonPropertyName("date")]
+        public DateTime Book_Add_Date { get; set; }
+        [JsonPropertyName("publisher")]
+        public string? Publisher { get; set; }
+    }
+
+    bool _visible = false;
+    private AddBookForm form;
+
+    private void ShowModal()
+    {
+        _visible = true;
+    }
+
+    private async Task HandleOk(MouseEventArgs e)
+    {
+        bool c = await form.HandleSubmit();
+        Task task;
+        if (c==true)
+        {
+
+            task=NoticeModel.ShowNotification("添加成功", "添加图书成功", _notice, NotificationType.Success);
+        }
+        else
+        {
+            task =NoticeModel.ShowNotification("添加失败", "添加图书失败", _notice, NotificationType.Error);
+        }
+        await Load();
+        StateHasChanged();
+        _visible = false;
+        await task;
+    }
+    private void HandleCancel(MouseEventArgs e)
+    {
+        Console.WriteLine(e);
+    }
+
+
+    private List<Book>? books;
+    private async Task Load()
+    {
+        books = new List<Book>(await Http.GetFromJsonAsync<Book[]>("/bookqueryAll"));
+        foreach (var book in books)
+        {
+            editCache[book.Isbn] = (false, book);
+        }
+    }
+
+    Dictionary<string, (bool edit, Book bookcache)> editCache = new ();
+
+    int i = 0;
+    string editId;
+
+    void startEdit(string isbn)
+    {
+        var data = editCache[isbn];
+        editCache[isbn] = (true, data.bookcache); // add a copy in cache
+    }
+
+    void cancelEdit(string isbn)
+    {
+        var book = books.FirstOrDefault(item => item.Isbn == isbn);
+        editCache[isbn] = (false, book); // recovery
+    }
+
+    async void CommitEdit(string isbn)
+    {
+        var c=await Http.PostAsJsonAsync<Book>("/bookupdate", editCache[isbn].bookcache);
+        if (c.IsSuccessStatusCode)
+        {
+
+            var index = books.FindIndex(item => item.Isbn == isbn);
+            books[index] = editCache[isbn].bookcache; // apply the copy to data source
+            editCache[isbn] = (false, books[index]); // don't affect rows in editing
+            StateHasChanged();
+            await NoticeModel.ShowNotification("更新成功", "更新成功", _notice, NotificationType.Success);
+        }
+        else
+        {
+            cancelEdit(isbn);
+            StateHasChanged();
+            await NoticeModel.ShowNotification("更新失败", "取消更新", _notice, NotificationType.Error);
+        }
+    }
+    async void DeleteBook(string isbn)
+    {
+        var c = await Http.PostAsJsonAsync("/bookdelete", new { isbn = isbn });
+        if (c.IsSuccessStatusCode)
+        {
+
+            NoticeModel.ShowNotification("删除成功", "删除成功", _notice, NotificationType.Success);
+            var index = books.FindIndex(item => item.Isbn == isbn);
+            books.RemoveAt(index); // remove the book from the list
+            editCache.Remove(isbn); // remove the book from the cache
+            StateHasChanged();
+        }
+        else
+        {
+            await NoticeModel.ShowNotification("删除失败", "删除失败", _notice, NotificationType.Error);
+        }
+    }
+
+
+}

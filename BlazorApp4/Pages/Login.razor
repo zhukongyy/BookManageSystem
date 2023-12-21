@@ -1,0 +1,86 @@
+﻿@page "/login"
+@layout LoginLayout
+@inject NavigationManager navigationManager
+@inject HttpClient Http
+@inject GlobalState globalState
+@inject INotificationService _notice
+@using AntDesign
+
+<body style="background-image:url(background/R.png); background-size: cover;">
+    <h1>图书馆管理系统</h1>
+    <div style="display: flex; justify-content: center; align-items: center; height: 100vh;">
+        <Card Bordered="true" Title=@("用户登录") Style="width:400px" Hoverable="false">
+            <Body>
+                <Form Model="@user" OnFinish="HandleValidSubmit">
+                    <FormItem>
+                        <AntDesign.Input Placeholder="请输入用户名" Size="large" @bind-Value="@user.username">
+                            <Prefix><Icon Type="user" /></Prefix>
+                        </AntDesign.Input>
+                    </FormItem>
+                    <FormItem>
+                        <AntDesign.Input Placeholder="请输入密码" Size="large" @bind-Value="@user.password" Type="password">
+                            <Prefix><Icon Type="lock" /></Prefix>
+                        </AntDesign.Input>
+                    </FormItem>
+                    <Space Direction="DirectionVHType.Vertical" Style="width:100%">
+                        <SpaceItem>
+                            <Button Type="primary" HtmlType="submit" Class="submit" Size="large" Block>登&nbsp;录</Button>
+                        </SpaceItem>
+                    </Space>
+                </Form>
+            </Body>
+        </Card>
+    </div>
+</body>
+@code {
+    private User user = new User();
+
+    private async void HandleValidSubmit()
+    {
+        bool ifSuccess = false;
+        if (user.username == "admin"&&user.password == "123456")
+        {
+            globalState.Role = 1;
+            ifSuccess = true;
+        }
+        else if (user.username == "superadmin"&&user.password=="123456")
+        {
+            globalState.Role = 2;
+            ifSuccess = true;
+        }
+        else
+        {
+            var c=(await Http.GetAsync($"/person_query?card={user.username}")).IsSuccessStatusCode;
+            if (c == true)
+            {
+                globalState.Role = 0;
+                ifSuccess = true;
+                globalState.UserName = user.username;
+            }
+            else
+            {
+                await NoticeModel.ShowNotification("登录失败", "密码错误", _notice, NotificationType.Error);
+            }
+        }
+        if (ifSuccess == true)
+        {
+            navigationManager.NavigateTo("/");
+        }
+    }
+
+    public class User
+    {
+        [Required]
+        public string username { get; set; }
+
+        [Required]
+        public string password { get; set; }
+    }
+
+    public class LoginResult
+    {
+        public string Status { get; set; }
+        public int UserType { get; set; }
+    }
+}
+}

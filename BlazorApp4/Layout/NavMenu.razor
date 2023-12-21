@@ -1,0 +1,83 @@
+﻿@inject GlobalState globalState
+
+
+
+<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">图书管理系统</a>
+        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+    </div>
+</div>
+
+<div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
+    <nav class="flex-column">
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
+            </NavLink>
+        </div>
+        @if (isAdmin)
+        {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="QueryBorrow">
+                    <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> 借阅信息
+                </NavLink>
+            </div>
+        }
+        @if (isSuperAdmin)
+        {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="BookManage">
+                    <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> 图书管理
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="UserManage">
+                    <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> 用户管理
+                </NavLink>
+            </div>
+        }
+
+        @if (isUser)
+        {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="User">
+                    <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> 查询预约
+                </NavLink>
+            </div>
+        }
+    </nav>
+</div>
+
+@code {
+    private bool collapseNavMenu = true;
+
+    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+
+
+    bool isAdmin = false;
+    bool isSuperAdmin = false;
+    bool isUser = false;
+    protected override async Task OnInitializedAsync()
+    {
+        if (globalState.Role == 1)
+        {
+            isAdmin = true;
+        }
+        else if (globalState.Role == 2)
+        {
+            isSuperAdmin = true;
+        }
+        else if (globalState.Role == 0)
+        {
+            isUser = true;
+        }
+    }
+}

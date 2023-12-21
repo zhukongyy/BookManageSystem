@@ -1,0 +1,48 @@
+﻿@page "/lendbook"
+@inject INotificationService _notice
+@inject HttpClient Http;
+<h1>借出图书</h1>
+<div style="display: flex; justify-content:center; align-items: center; height: 50vh;">
+    <Card Bordered="true" Title=@("借书信息") Style="width:500px" Hoverable="false ">
+        <Body>
+            <Form Model="@lendModel" OnFinish="HandleSubmit">
+                <FormItem>
+                    <AntDesign.Input Placeholder="请输入图书编号" Size="large" @bind-Value="@lendModel.ISBN">
+                        <Prefix><Icon Type="user" /></Prefix>
+                    </AntDesign.Input>
+                </FormItem>
+                <FormItem>
+                    <AntDesign.Input Placeholder="请输入借书证号" Size="large" @bind-Value="@lendModel.ReaderNum">
+                        <Prefix><Icon Type="user" /></Prefix>
+                    </AntDesign.Input>
+                </FormItem>
+                <Space Direction="DirectionVHType.Vertical" Style="width:100%">
+                    <SpaceItem>
+                        <Button Type="primary" HtmlType="submit" Class="submit" Size="large" Block>提&nbsp交</Button>
+                    </SpaceItem>
+                </Space>
+            </Form>
+        </Body>
+    </Card>
+</div>
+@code {
+    LendModel lendModel = new();
+    private class LendModel
+    {
+        public string? ISBN{ get; set; }
+        public string? ReaderNum{ get; set; }
+    }
+    private async Task HandleSubmit()
+    {
+        var c=await Http.PostAsJsonAsync<LendModel>("/lend", lendModel);
+        if (c.IsSuccessStatusCode)
+        {
+
+            await NoticeModel.ShowNotification("借书成功", "借书成功", _notice, NotificationType.Success);
+        }
+        else
+        {
+            await NoticeModel.ShowNotification("借书失败", "借书失败", _notice, NotificationType.Error);
+        }
+    }
+}
